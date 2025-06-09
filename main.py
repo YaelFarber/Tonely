@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-import openai
+from openai import OpenAI
 import os
 from dotenv import load_dotenv
 import json
@@ -13,7 +13,7 @@ if not API_KEY:
     raise RuntimeError("⚠️ OPENAI_API_KEY not found. Please check your .env file.")
 
 # Set the OpenAI API key
-openai.api_key = API_KEY
+#openai.api_key = API_KEY
 
 # Initialize the FastAPI app
 app = FastAPI()
@@ -38,25 +38,31 @@ def analyze_message(message: Message):
     Message: "{message.text}"
     """
 
-    try:
-        # Log the incoming message for debugging
-        print(f"[INFO] Incoming message: {message.text}")
+    # Log the incoming message for debugging
+    print(f"[INFO] Incoming message: {message.text}")
 
-        # Send the prompt to OpenAI's Chat API
-        response = openai.ChatCompletion.create(
-            model="gpt-4",
-            messages=[
-                {"role": "system", "content": "You are a kind, supportive assistant helping users understand and rephrase messages with empathy."},
-                {"role": "user", "content": prompt}
-            ]
+    try:
+        # Send the prompt to OpenAI's Chat API 
+
+        client = OpenAI()
+        client.api_key = API_KEY
+        completion = client.chat.completions.create(
+          model="gpt-4o",
+          messages=[
+            {"role": "developer", "content": "You are a kind, supportive assistant helping users understand and rephrase messages with empathy."},
+            {"role": "user", "content": prompt}
+          ],
+            response_format={"type": "json_object"}
         )
 
+        ###
         # Extract the LLM's response
-        reply = response.choices[0].message["content"]
+        reply = completion.choices[0].message.content
+
 
         # Convert the string response into a JSON object
         result = json.loads(reply)
-
+        #print(result)
         # Log the response for debugging
         print(f"[INFO] LLM response: {result}")
 
@@ -67,9 +73,8 @@ def analyze_message(message: Message):
         raise HTTPException(status_code=500, detail="❌ Failed to parse LLM response. Try again or adjust prompt.")
 
     # Handle authentication errors (wrong or missing API key)
-    except openai.error.AuthenticationError:
-        raise HTTPException(status_code=401, detail="🔐 Invalid OpenAI API key.")
-
-    # Catch-all for other unexpected errors
     except Exception as e:
+        # Optionally, check for authentication error if using openai.error.AuthenticationError
+        if hasattr(e, "status_code") and e.status_code == 401:
+            raise HTTPException(status_code=401, detail="🔐 Invalid OpenAI API key.")
         raise HTTPException(status_code=500, detail=f"🔥 Unexpected error: {str(e)}")
