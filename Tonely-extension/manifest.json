@@ -1,0 +1,12 @@
+{
+    "manifest_version": 3,
+    "name" : "erev tov extension",
+    "description" : "Display ערב טוב on top of each page.",
+    "version" : "1.0",
+    "content_scripts" : [
+        {
+            "matches": ["https://web.whatsapp.com/*"],
+            "js": ["content.js"]
+        }
+    ]
+}
