@@ -26,103 +26,28 @@ app.mount("/example_data", StaticFiles(directory="example_data"), name="example_
 class Message(BaseModel):
     text: str  # The message content to analyze
 
-TONE_RESPONSES = {
-    "passive-aggressive": {
-        "en": {
-            "feedback": "It seems like you're expressing something indirectly. Let’s try to be more direct.",
-            "suggestion": "Try stating your needs or thoughts in a more straightforward way."
-        },
-        "he": {
-            "feedback": "נראה שאת מביעה משהו בעקיפין. אולי כדאי לנסח את הדברים בצורה ישירה יותר.",
-            "suggestion": "נסי לומר את מה שאת מרגישה בצורה ברורה וישירה."
-        }
-    },
-    "angry": {
-        "en": {
-            "feedback": "Your message sounds angry. It’s okay to feel that way.",
-            "suggestion": "Try expressing your frustration with clarity but without blame."
-        },
-        "he": {
-            "feedback": "נראה שאת כועסת. זה בסדר להרגיש כך.",
-            "suggestion": "נסי לבטא את הכעס שלך בצורה ברורה אך לא מאשימה."
-        }
-    },
-    "sarcastic": {
-        "en": {
-            "feedback": "There may be sarcasm in your tone. That can make it harder to understand your intent.",
-            "suggestion": "Try expressing your thoughts more directly."
-        },
-        "he": {
-            "feedback": "נראה שיש כאן סרקזם, וזה עלול להקשות על הבנה הדדית.",
-            "suggestion": "נסי לנסח את מחשבותייך בצורה ברורה וישירה."
-        }
-    },
-    "self-deprecating": {
-        "en": {
-            "feedback": "You might be being hard on yourself. Remember to show yourself some kindness.",
-            "suggestion": "Try rephrasing to focus on your strengths or intentions."
-        },
-        "he": {
-            "feedback": "נראה שאת קשה עם עצמך. מגיע לך יחס אוהד.",
-            "suggestion": "נסי להתמקד בכוונות או בחוזקות שלך."
-        }
-    },
-    "cynical": {
-        "en": {
-            "feedback": "There may be skepticism in your message. That’s okay—let’s try to keep it constructive.",
-            "suggestion": "Try rephrasing to invite open conversation rather than shutting it down."
-        },
-        "he": {
-            "feedback": "נראה שיש מסר ספקני בדברייך. זה בסדר – נשתדל לשמור על שיח בונה.",
-            "suggestion": "נסחי את המסר כך שיזמין שיח פתוח במקום לחסום אותו."
-        }
-    },
-    "anxious": {
-        "en": {
-            "feedback": "Your message seems to carry worry or uncertainty. You're not alone.",
-            "suggestion": "Consider stating your concerns clearly so others can offer support."
-        },
-        "he": {
-            "feedback": "נראה שהודעתך מבטאת דאגה או חוסר ביטחון. את לא לבד.",
-            "suggestion": "נסי לנסח את החששות שלך באופן ברור, כדי שיקל על אחרים לעזור."
-        }
-    },
-    "confused": {
-        "en": {
-            "feedback": "It sounds like you're unsure or seeking clarity. That’s totally fine.",
-            "suggestion": "Try asking a direct question so it’s easier to help."
-        },
-        "he": {
-            "feedback": "נראה שאת מחפשת הבהרה או לא בטוחה. זה לגמרי בסדר.",
-            "suggestion": "נסחי שאלה ישירה כדי להקל על מי שמנסה לעזור לך."
-        }
-    },
-    "neutral": {
-        "en": {
-            "feedback": "Your tone seems neutral.",
-            "suggestion": None
-        },
-        "he": {
-            "feedback": "הטון שלך נראה ניטרלי.",
-            "suggestion": None
-        }
-    }
-}
-
 # Define the /analyze endpoint to receive messages and analyze their emotional tone
 @app.post("/analyze")
 def analyze_message(message: Message):
     # Construct the prompt for the language model
     prompt = f"""
-    You are a kind assistant that helps users rephrase their messages in a clearer and more constructive tone.
+    You are an empathetic assistant. Analyze the message below and reply in compact JSON format with:
+    - "tone": the emotional tone (e.g., angry, sarcastic, passive-aggressive, self-deprecating, curious, defensive, insecure, cold, dismissive, annoyed, neutral)
+    - "feedback": a short, warm, and friendly reflection — in the same language as the original message — focusing on how the recipient might feel when reading it. 
+    Don't describe how the message is written. Instead, describe the emotional impact it may have on the person who receives it.
+    Use natural, human-style language — informal is fine. Be kind and avoid overanalyzing or sounding robotic.
+    At the end of the feedback, always add a gentle, conversational question inviting the sender to reflect or respond — something short and open-ended like: "what do you think about it?" etc.
+    
+    HOWEVER:  
+    If the message is short, emotionally neutral, polite (e.g., "thanks", "ok", "noted", "sure", "got it", "fine", "understood", etc.), or contains no emotional or interpersonal subtext — return this exact JSON:  
 
-    Please analyze the following message and respond in JSON format with:
-    - "tone": emotional tone (e.g., angry, sarcastic, passive-aggressive, self-deprecating, neutral, etc.)
-    - "feedback": super short reflection about the tone in the same language of the original message 
-    - "suggestion": improved rephrasing of the original message in the same language
-
+    ```json
+    {{ "tone": "neutral", "feedback": null }}
     Message: "{message.text}"
-    """
+    Detect the language automatically. Respond in compact JSON format only, no explanation.
+
+    """ 
+       # Ensure the message text is not empty
 
     # Log the incoming message for debugging
     print(f"[INFO] Incoming message: {message.text}")

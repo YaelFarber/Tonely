@@ -2,7 +2,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Run Affecto FastAPI Server",
+      "name": "Run Tonely FastAPI Server",
       "type": "debugpy",
       "request": "launch",
       "module": "uvicorn",
