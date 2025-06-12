@@ -47,7 +47,6 @@ const interval = setInterval(() => {
   }
 }, 500);
 
-
 // Real integration with FastAPI server on Render
 async function fetchToneFeedback(messageText) {
   try {
@@ -62,28 +61,23 @@ async function fetchToneFeedback(messageText) {
     if (!res.ok) throw new Error("Server returned an error");
 
     const data = await res.json();
-    console.log(" API response:", data);
+    console.log("📡 תשובת ה־API התקבלה:", data);
 
-    const sensitiveTones = [
-      "angry", "sarcastic", "passive-aggressive",
-      "cold", "defensive", "dismissive", "annoyed", "insecure"
-    ];
-
-    if (data.tone === "neutral" || data.feedback === null) {
-      return { flagged: false };
-    }
- // Only flag if tone is in sensitive list
-    if (sensitiveTones.includes(data.tone.toLowerCase())) {
+    // If the message is marked as problematic and there is feedback → trigger popup
+    if (data.problematic === true && data.feedback) {
+      console.log("⚠️ ההודעה עלולה להיקלט כפוגענית או רגישה");
       return {
         flagged: true,
         analysisText: data.feedback
       };
     }
 
+    // Otherwise, message is considered safe
+    console.log("✅ ההודעה ניטרלית או בטוחה – תישלח כרגיל.");
     return { flagged: false };
 
   } catch (err) {
-    console.error(" Error communicating with the LLM API:", err);
+    console.error("❌ שגיאה בחיבור לשרת ה־LLM:", err);
     return { flagged: false }; // fallback: send message anyway
   }
 }

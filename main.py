@@ -61,21 +61,21 @@ def analyze_message(message: Message):
     # Construct the prompt for the language model
     prompt = f"""
     You are an empathetic assistant. Analyze the message below and reply in compact JSON format with:
-    - "tone": the emotional tone (e.g., angry, sarcastic, passive-aggressive, self-deprecating, curious, defensive, insecure, cold, dismissive, annoyed, neutral)
+    - "problematic": true if the tone might be perceived as emotionally difficult, harsh, or hurtful to the recipient (even subtly); false if the tone is safe and not likely to cause discomfort or misunderstanding.
     - "feedback": a short, warm, and friendly reflection — in the same language as the original message — focusing on how the recipient might feel when reading it. 
     Don't describe how the message is written. Instead, describe the emotional impact it may have on the person who receives it.
     Use natural, human-style language — informal is fine. Be kind and avoid overanalyzing or sounding robotic.
     At the end of the feedback, always add a gentle, conversational question inviting the sender to reflect or respond — something short and open-ended like: "what do you think about it?" etc.
-    
+
     HOWEVER:  
-    If the message is short, emotionally neutral, polite (e.g., "thanks", "ok", "noted", "sure", "got it", "fine", "understood", etc.), or contains no emotional or interpersonal subtext — return this exact JSON:  
+    If the message is short, emotionally neutral, and polite (e.g., "thanks", "ok", "noted", "sure", "got it", "fine", "understood", etc.), or contains no emotional or interpersonal subtext — return this exact JSON:
 
     ```json
-    {{ "tone": "neutral", "feedback": null }}
+    {{ "tone": "neutral", "problematic": false, "feedback": null }}
     Message: "{message.text}"
     Detect the language automatically. Respond in compact JSON format only, no explanation.
 
-    """ 
+    """
        # Ensure the message text is not empty
 
     # Log the incoming message for debugging
