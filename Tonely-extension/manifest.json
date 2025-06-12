@@ -4,8 +4,7 @@
     "description" : "Empathetic tone checker for Text messages",
     "version" : "1.0",
     "permissions": [
-    "storage",
-    "https://tonely.onrender.com/*"
+    "storage"
     ],
     "content_scripts" : [
         {
