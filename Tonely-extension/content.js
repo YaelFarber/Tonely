@@ -17,23 +17,32 @@ const interval = setInterval(() => {
 
     sendButton.addEventListener("click", async (event) => {
       if (suppressNextClick) {
-        suppressNextClick = false; // Reset the flag for future sends
-        return; // Don't handle this click – it's from Tonely
+        suppressNextClick = false; // Reset suppression for future clicks
+        return; // Skip handling this click (it's triggered programmatically)
       }
     
+      // Locate the input message box
       const inputBox = document.querySelector('div[aria-label="הקלדת הודעה"]');
       if (inputBox) {
-        const message = inputBox.innerText.trim();
+        const message = inputBox?.innerText?.trim();
+    
+        // 🛡️ Skip analysis if there's no actual text (e.g., image or emoji only)
+        if (!message || message === "") {
+          console.log("ℹ️ אין טקסט להעריך – ייתכן שזו תמונה, קובץ או אמוג'י בלבד. לא נעשתה בדיקה.");
+          return;
+        }
+    
         console.log("💬 ההודעה שנקלטה:", message);
     
-        // Block the original send
+        // Prevent the default message sending
         inputBox.innerText = "";
         event.stopImmediatePropagation();
         event.preventDefault();
     
-        // Use real LLM-based tone analysis
+        // 🔍 Call LLM or backend to get tone feedback
         const feedback = await fetchToneFeedback(message);
     
+        // Handle flagged tone
         if (feedback.flagged) {
           showTonePopup(message, feedback.analysisText);
           console.log("⚠️ טונלי זיהה טון רגיש והציג פופאפ.");
@@ -41,8 +50,11 @@ const interval = setInterval(() => {
           sendOriginalMessage(message);
           console.log("✅ הטון תקין - ההודעה נשלחה כרגיל.");
         }
+      } else {
+        console.log("❗ לא נמצא שדה הקלדה – ייתכן שמבנה הדף השתנה.");
       }
     }, true);
+    
       
   }
 }, 500);
@@ -82,77 +94,65 @@ async function fetchToneFeedback(messageText) {
   }
 }
 
+/**
+ * Speaks a given Hebrew text aloud using the Web Speech API.
+ * This function looks for a Hebrew voice and uses it if available.
+ * Can be used to add an optional "listen" button to your UI.
+ *
+ * @param {string} text - The Hebrew text to be spoken aloud.
+ */
+function speakText(text) {
+  // Cancel any ongoing speech before starting a new one
+  window.speechSynthesis.cancel();
 
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = "he-IL"; // Set language to Hebrew
+  utterance.rate = 1;       // Normal speaking rate
+  utterance.pitch = 1;      // Normal pitch
+  utterance.volume = 1;     // Full volume
+
+  // Try to select a Hebrew voice (if available)
+  const voices = window.speechSynthesis.getVoices();
+  const hebrewVoice = voices.find(voice => voice.lang === "he-IL");
+
+  if (hebrewVoice) {
+    utterance.voice = hebrewVoice;
+    console.log("🔊 קול עברי נמצא והוגדר.");
+  } else {
+    console.log("⚠️ קול עברי לא נמצא, משתמשים בקול ברירת מחדל.");
+  }
+
+  // Speak the text
+  window.speechSynthesis.speak(utterance);
+  console.log("📢 מקריא את הטקסט: ", text);
+}
+
+
+// Function to apply hover effects to a button
+function applyHoverEffects(button, originalColor = null, hoverColor = null) {
+  button.addEventListener("mouseenter", () => {
+    button.style.filter = "brightness(1.1)";
+    button.style.boxShadow = "0 2px 6px rgba(0,0,0,0.1)";
+    if (hoverColor) button.style.backgroundColor = hoverColor;
+  });
+
+  button.addEventListener("mouseleave", () => {
+    button.style.filter = "none";
+    button.style.boxShadow = "none";
+    if (originalColor) button.style.backgroundColor = originalColor;
+  });
+}
+
+
+// Function to show the tone feedback popup
 function showTonePopup(originalMessage, analysisText) {
   const existingPopup = document.getElementById("tone-popup");
-  if (existingPopup) {
-    existingPopup.remove();
-  }
+  if (existingPopup) existingPopup.remove();
 
   const popup = document.createElement("div");
   popup.id = "tone-popup";
 
-  // === Character + bubble container ===
-  const topRow = document.createElement("div");
-  topRow.style.display = "flex";
-  topRow.style.alignItems = "flex-start";
-  topRow.style.justifyContent = "flex-start";
-  topRow.style.gap = "12px";
-  topRow.style.marginBottom = "16px";
-
-  // === Tonely image ===
-  const tonelyImg = document.createElement("img");
-  tonelyImg.src = chrome.runtime.getURL("assets/Tonely.png");
-  tonelyImg.alt = "Tonely character";
-  tonelyImg.style.height = "60px";
-  tonelyImg.style.width = "auto";
-  tonelyImg.style.flexShrink = "0";
-
-  // === Speech bubble ===
-  const bubble = document.createElement("div");
-  bubble.textContent = "היי, רק רציתי לשאול... רוצה לשמוע איך זה אולי יישמע?";
-  bubble.style.backgroundColor = "#eef5f8";
-  bubble.style.padding = "10px 14px";
-  bubble.style.borderRadius = "16px";
-  bubble.style.boxShadow = "0 1px 3px rgba(0,0,0,0.1)";
-  bubble.style.fontSize = "15px";
-  bubble.style.lineHeight = "1.5";
-  bubble.style.direction = "rtl";
-
-  topRow.appendChild(tonelyImg);
-  topRow.appendChild(bubble);
-
-  // === Buttons ===
-  const buttonRow = document.createElement("div");
-  buttonRow.style.display = "flex";
-  buttonRow.style.flexDirection = "row-reverse";
-  buttonRow.style.gap = "8px";
-
-  const readButton = document.createElement("button");
-  readButton.textContent = "כן, קרא לי רגע";
-
-  const sendButton = document.createElement("button");
-  sendButton.textContent = "שלח כמו שהוא";
-
-  [readButton, sendButton].forEach((btn) => {
-    btn.style.padding = "8px 14px";
-    btn.style.border = "none";
-    btn.style.borderRadius = "8px";
-    btn.style.cursor = "pointer";
-    btn.style.fontSize = "14px";
-  });
-
-  readButton.style.backgroundColor = "#fff";
-  readButton.style.border = "1px solid #ccc";
-  readButton.style.color = "#333";
-
-  sendButton.style.backgroundColor = "#00a884";
-  sendButton.style.color = "white";
-
-  buttonRow.appendChild(readButton);
-  buttonRow.appendChild(sendButton);
-
-  // === Popup styling ===
+  // === Shared styling ===
   popup.style.position = "fixed";
   popup.style.bottom = "20px";
   popup.style.left = "20px";
@@ -169,18 +169,79 @@ function showTonePopup(originalMessage, analysisText) {
   popup.style.transform = "translateY(10px)";
   popup.style.transition = "opacity 0.3s ease, transform 0.3s ease";
 
-  // Append everything
+  // === Initial content ===
+  const topRow = document.createElement("div");
+  topRow.className = "tone-row";
+  topRow.style.display = "flex";
+  topRow.style.alignItems = "flex-start";
+  topRow.style.justifyContent = "flex-start";
+  topRow.style.gap = "12px";
+  topRow.style.marginBottom = "16px";
+
+  const tonelyImg = document.createElement("img");
+  tonelyImg.src = chrome.runtime.getURL("assets/Tonely.png");
+  tonelyImg.alt = "Tonely character";
+  tonelyImg.style.height = "60px";
+  tonelyImg.style.flexShrink = "0";
+
+  const bubble = document.createElement("div");
+  bubble.className = "tone-bubble";
+  bubble.textContent = "היי, רק רציתי לשאול... רוצה לשמוע איך זה אולי יישמע?";
+  Object.assign(bubble.style, {
+    backgroundColor: "#eef5f8",
+    padding: "10px 14px",
+    borderRadius: "16px",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+    fontSize: "15px",
+    lineHeight: "1.5",
+    direction: "rtl",
+    transition: "all 0.3s ease"
+  });
+
+  topRow.appendChild(tonelyImg);
+  topRow.appendChild(bubble);
+
+  const buttonRow = document.createElement("div");
+  buttonRow.className = "tone-buttons";
+  buttonRow.style.display = "flex";
+  buttonRow.style.flexDirection = "row-reverse";
+  buttonRow.style.gap = "8px";
+
+  const readButton = document.createElement("button");
+  readButton.textContent = "כן, קרא לי רגע";
+  const sendButton = document.createElement("button");
+  sendButton.textContent = "שלח כמו שהוא";
+
+  [readButton, sendButton].forEach(btn => {
+    Object.assign(btn.style, {
+      padding: "8px 14px",
+      border: "none",
+      borderRadius: "8px",
+      cursor: "pointer",
+      fontSize: "14px"
+    });
+  });
+
+  readButton.style.backgroundColor = "#fff";
+  readButton.style.border = "1px solid #ccc";
+  readButton.style.color = "#333";
+  sendButton.style.backgroundColor = "#00a884";
+  sendButton.style.color = "white";
+
+  applyHoverEffects(readButton);
+  applyHoverEffects(sendButton, "#00a884", "#00866d");
+
+  buttonRow.appendChild(readButton);
+  buttonRow.appendChild(sendButton);
+
   popup.appendChild(topRow);
   popup.appendChild(buttonRow);
   document.body.appendChild(popup);
-
-  // Animate in
   requestAnimationFrame(() => {
     popup.style.opacity = "1";
     popup.style.transform = "translateY(0)";
   });
 
-  // Button logic
   sendButton.addEventListener("click", () => {
     sendOriginalMessage(originalMessage);
     popup.remove();
@@ -188,101 +249,127 @@ function showTonePopup(originalMessage, analysisText) {
   });
 
   readButton.addEventListener("click", () => {
-  popup.innerHTML = "";
+    popup.style.transition = "all 0.3s ease";
+    popup.style.transform = "scale(0.97) translateY(5px)";
+    popup.style.opacity = "0";
+    setTimeout(() => {
+      popup.innerHTML = "";
 
-  // === Character + bubble container ===
-  const feedbackRow = document.createElement("div");
-  feedbackRow.style.display = "flex";
-  feedbackRow.style.alignItems = "flex-start";
-  feedbackRow.style.justifyContent = "flex-start";
-  feedbackRow.style.gap = "12px";
-  feedbackRow.style.marginBottom = "16px";
+      const feedbackRow = document.createElement("div");
+      feedbackRow.style.display = "flex";
+      feedbackRow.style.alignItems = "flex-start";
+      feedbackRow.style.justifyContent = "flex-start";
+      feedbackRow.style.gap = "12px";
+      feedbackRow.style.marginBottom = "16px";
 
-  const feedbackImg = document.createElement("img");
-  feedbackImg.src = chrome.runtime.getURL("assets/Tonely.png");
-  feedbackImg.alt = "Tonely character";
-  feedbackImg.style.height = "60px";
-  feedbackImg.style.width = "auto";
-  feedbackImg.style.flexShrink = "0";
+      const feedbackImg = tonelyImg.cloneNode();
 
-  const feedbackBubble = document.createElement("div");
-  feedbackBubble.textContent = analysisText;
-  feedbackBubble.style.backgroundColor = "#f5f8fa";
-  feedbackBubble.style.padding = "10px 14px";
-  feedbackBubble.style.borderRadius = "16px";
-  feedbackBubble.style.boxShadow = "0 1px 3px rgba(0,0,0,0.1)";
-  feedbackBubble.style.fontSize = "15px";
-  feedbackBubble.style.lineHeight = "1.5";
-  feedbackBubble.style.direction = "rtl";
+      const feedbackBubble = document.createElement("div");
+      feedbackBubble.textContent = analysisText;
+      Object.assign(feedbackBubble.style, {
+        backgroundColor: "#f5f8fa",
+        padding: "10px 14px",
+        borderRadius: "16px",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+        fontSize: "15px",
+        lineHeight: "1.5",
+        direction: "rtl"
+      });
 
-  feedbackRow.appendChild(feedbackImg);
-  feedbackRow.appendChild(feedbackBubble);
+      feedbackRow.appendChild(feedbackImg);
+      feedbackRow.appendChild(feedbackBubble);
 
-  // === Action buttons ===
-  const actionRow = document.createElement("div");
-  actionRow.style.display = "flex";
-  actionRow.style.flexDirection = "row-reverse";
-  actionRow.style.gap = "8px";
+      const actionRow = document.createElement("div");
+      actionRow.style.display = "flex";
+      actionRow.style.flexDirection = "row-reverse";
+      actionRow.style.gap = "8px";
 
-  const editButton = document.createElement("button");
-  editButton.textContent = "ערוך הודעה";
+      const editButton = document.createElement("button");
+      editButton.textContent = "ערוך הודעה";
+      const sendAnywayButton = document.createElement("button");
+      sendAnywayButton.textContent = "שלח בכל זאת";
 
-  const sendAnywayButton = document.createElement("button");
-  sendAnywayButton.textContent = "שלח בכל זאת";
+      [editButton, sendAnywayButton].forEach(btn => {
+        Object.assign(btn.style, {
+          padding: "8px 14px",
+          border: "none",
+          borderRadius: "8px",
+          cursor: "pointer",
+          fontSize: "14px"
+        });
+      });
 
-  [editButton, sendAnywayButton].forEach((btn) => {
-    btn.style.padding = "8px 14px";
-    btn.style.border = "none";
-    btn.style.borderRadius = "8px";
-    btn.style.cursor = "pointer";
-    btn.style.fontSize = "14px";
+      editButton.style.backgroundColor = "#fff";
+      editButton.style.border = "1px solid #ccc";
+      editButton.style.color = "#333";
+      sendAnywayButton.style.backgroundColor = "#00a884";
+      sendAnywayButton.style.color = "white";
+
+      applyHoverEffects(editButton);
+      applyHoverEffects(sendAnywayButton, "#00a884", "#00866d");
+
+      actionRow.appendChild(editButton);
+      actionRow.appendChild(sendAnywayButton);
+
+      // === Add speak button ===
+      const speakButton = document.createElement("button");
+      speakButton.textContent = "🔊 השמע לי את זה";
+      Object.assign(speakButton.style, {
+        backgroundColor: "#eef5f8",
+        color: "#333",
+        border: "none",
+        borderRadius: "8px",
+        padding: "8px 14px",
+        fontSize: "14px",
+        cursor: "pointer"
+      });
+
+      speakButton.addEventListener("click", () => {
+        speakText(analysisText);
+        console.log("🔊 טונלי הקריא את הפידבק בקול.");
+      });
+
+      applyHoverEffects(speakButton);
+
+      actionRow.appendChild(speakButton);
+
+      const closeBtn = document.createElement("button");
+      closeBtn.textContent = "×";
+      Object.assign(closeBtn.style, {
+        position: "absolute",
+        top: "8px",
+        left: "12px",
+        background: "none",
+        border: "none",
+        fontSize: "18px",
+        cursor: "pointer"
+      });
+      closeBtn.onclick = () => popup.remove();
+
+      popup.appendChild(closeBtn);
+      popup.appendChild(feedbackRow);
+      popup.appendChild(actionRow);
+
+      requestAnimationFrame(() => {
+        popup.style.opacity = "1";
+        popup.style.transform = "scale(1) translateY(0)";
+      });
+
+      editButton.addEventListener("click", () => {
+        const inputBox = document.querySelector('div[aria-label="הקלדת הודעה"]');
+        if (inputBox) inputBox.innerText = originalMessage;
+        popup.remove();
+        console.log("✏️ המשתמש בחר לערוך את ההודעה.");
+      });
+
+      sendAnywayButton.addEventListener("click", () => {
+        sendOriginalMessage(originalMessage);
+        popup.remove();
+        console.log("📨 המשתמש בחר לשלוח את ההודעה בכל זאת.");
+      });
+    }, 300);
   });
-
-  editButton.style.backgroundColor = "#fff";
-  editButton.style.border = "1px solid #ccc";
-  editButton.style.color = "#333";
-
-  sendAnywayButton.style.backgroundColor = "#00a884";
-  sendAnywayButton.style.color = "white";
-
-  actionRow.appendChild(editButton);
-  actionRow.appendChild(sendAnywayButton);
-
-  const closeBtn = document.createElement("button");
-  closeBtn.textContent = "×";
-  closeBtn.style.position = "absolute";
-  closeBtn.style.top = "8px";
-  closeBtn.style.left = "12px";
-  closeBtn.style.background = "none";
-  closeBtn.style.border = "none";
-  closeBtn.style.fontSize = "18px";
-  closeBtn.style.cursor = "pointer";
-  closeBtn.onclick = () => popup.remove();
-  popup.appendChild(closeBtn);
-
-
-  // Append everything to popup
-  popup.appendChild(feedbackRow);
-  popup.appendChild(actionRow);
-
-  // Button actions
-  editButton.addEventListener("click", () => {
-    const inputBox = document.querySelector('div[aria-label="הקלדת הודעה"]');
-    if (inputBox) {
-      inputBox.innerText = originalMessage;
-    }
-    popup.remove();
-    console.log("✏️ המשתמש בחר לערוך את ההודעה.");
-  });
-
-  sendAnywayButton.addEventListener("click", () => {
-    sendOriginalMessage(originalMessage);
-    popup.remove();
-    console.log("📨 המשתמש בחר לשלוח את ההודעה בכל זאת.");
-  });
-});
 }
-
 
 
 function sendOriginalMessage(text) {
