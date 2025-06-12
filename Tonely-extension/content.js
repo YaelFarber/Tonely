@@ -83,121 +83,204 @@ async function fetchToneFeedback(messageText) {
 }
 
 
-
 function showTonePopup(originalMessage, analysisText) {
-  // Remove existing popup if one exists
   const existingPopup = document.getElementById("tone-popup");
   if (existingPopup) {
     existingPopup.remove();
   }
 
-  // Create popup container
   const popup = document.createElement("div");
   popup.id = "tone-popup";
 
-  // Create text: "Tonely has something to say"
-  const messageText = document.createElement("p");
-  messageText.innerHTML = 'ל<span dir="ltr">Tonely</span> יש משהו לומר, תרצה לשמוע?';
-  messageText.style.marginBottom = "12px";
+  // === Character + bubble container ===
+  const topRow = document.createElement("div");
+  topRow.style.display = "flex";
+  topRow.style.alignItems = "flex-start";
+  topRow.style.justifyContent = "flex-start";
+  topRow.style.gap = "12px";
+  topRow.style.marginBottom = "16px";
 
-  // Create "Read" button
+  // === Tonely image ===
+  const tonelyImg = document.createElement("img");
+  tonelyImg.src = chrome.runtime.getURL("assets/Tonely.png");
+  tonelyImg.alt = "Tonely character";
+  tonelyImg.style.height = "60px";
+  tonelyImg.style.width = "auto";
+  tonelyImg.style.flexShrink = "0";
+
+  // === Speech bubble ===
+  const bubble = document.createElement("div");
+  bubble.textContent = "היי, רק רציתי לשאול... רוצה לשמוע איך זה אולי יישמע?";
+  bubble.style.backgroundColor = "#eef5f8";
+  bubble.style.padding = "10px 14px";
+  bubble.style.borderRadius = "16px";
+  bubble.style.boxShadow = "0 1px 3px rgba(0,0,0,0.1)";
+  bubble.style.fontSize = "15px";
+  bubble.style.lineHeight = "1.5";
+  bubble.style.direction = "rtl";
+
+  topRow.appendChild(tonelyImg);
+  topRow.appendChild(bubble);
+
+  // === Buttons ===
+  const buttonRow = document.createElement("div");
+  buttonRow.style.display = "flex";
+  buttonRow.style.flexDirection = "row-reverse";
+  buttonRow.style.gap = "8px";
+
   const readButton = document.createElement("button");
-  readButton.textContent = "קרא";
+  readButton.textContent = "כן, קרא לי רגע";
 
-  // Create "Send" button
   const sendButton = document.createElement("button");
-  sendButton.textContent = "שלח";
+  sendButton.textContent = "שלח כמו שהוא";
 
-  // Shared styling
   [readButton, sendButton].forEach((btn) => {
-    btn.style.padding = "6px 12px";
+    btn.style.padding = "8px 14px";
     btn.style.border = "none";
-    btn.style.borderRadius = "6px";
+    btn.style.borderRadius = "8px";
     btn.style.cursor = "pointer";
     btn.style.fontSize = "14px";
-    btn.style.marginLeft = "8px";
   });
 
-  readButton.style.backgroundColor = "#eee";
+  readButton.style.backgroundColor = "#fff";
+  readButton.style.border = "1px solid #ccc";
+  readButton.style.color = "#333";
+
   sendButton.style.backgroundColor = "#00a884";
   sendButton.style.color = "white";
 
-  // Add buttons and text to popup
-  popup.appendChild(messageText);
-  popup.appendChild(readButton);
-  popup.appendChild(sendButton);
+  buttonRow.appendChild(readButton);
+  buttonRow.appendChild(sendButton);
 
-  // Style the popup
+  // === Popup styling ===
   popup.style.position = "fixed";
   popup.style.bottom = "20px";
   popup.style.left = "20px";
-  popup.style.backgroundColor = "#fff";
-  popup.style.border = "1px solid #ccc";
-  popup.style.padding = "16px";
-  popup.style.borderRadius = "8px";
-  popup.style.boxShadow = "0 2px 6px rgba(0,0,0,0.15)";
+  popup.style.backgroundColor = "#ffffff";
+  popup.style.border = "1px solid #ddd";
+  popup.style.padding = "20px";
+  popup.style.borderRadius = "16px";
+  popup.style.boxShadow = "0 4px 12px rgba(0,0,0,0.08)";
   popup.style.zIndex = "9999";
   popup.style.fontFamily = "sans-serif";
-  popup.style.maxWidth = "300px";
+  popup.style.maxWidth = "360px";
+  popup.style.direction = "rtl";
+  popup.style.opacity = "0";
+  popup.style.transform = "translateY(10px)";
+  popup.style.transition = "opacity 0.3s ease, transform 0.3s ease";
 
-  // Append to the page
+  // Append everything
+  popup.appendChild(topRow);
+  popup.appendChild(buttonRow);
   document.body.appendChild(popup);
 
-  // ✅ "Send" button logic: Send the message anyway
+  // Animate in
+  requestAnimationFrame(() => {
+    popup.style.opacity = "1";
+    popup.style.transform = "translateY(0)";
+  });
+
+  // Button logic
   sendButton.addEventListener("click", () => {
-    sendOriginalMessage(originalMessage); // you already have this function
+    sendOriginalMessage(originalMessage);
     popup.remove();
     console.log("📨 המשתמש בחר לשלוח את ההודעה כרגיל.");
   });
 
-  // ✅ "Read" button logic: Show the analysis and add "Edit" option
   readButton.addEventListener("click", () => {
-    popup.innerHTML = ""; // Clear existing content
+  popup.innerHTML = "";
 
-    const feedbackText = document.createElement("p");
-    feedbackText.textContent = analysisText;
-    feedbackText.style.marginBottom = "12px";
+  // === Character + bubble container ===
+  const feedbackRow = document.createElement("div");
+  feedbackRow.style.display = "flex";
+  feedbackRow.style.alignItems = "flex-start";
+  feedbackRow.style.justifyContent = "flex-start";
+  feedbackRow.style.gap = "12px";
+  feedbackRow.style.marginBottom = "16px";
 
-    const editButton = document.createElement("button");
-    editButton.textContent = "ערוך הודעה";
+  const feedbackImg = document.createElement("img");
+  feedbackImg.src = chrome.runtime.getURL("assets/Tonely.png");
+  feedbackImg.alt = "Tonely character";
+  feedbackImg.style.height = "60px";
+  feedbackImg.style.width = "auto";
+  feedbackImg.style.flexShrink = "0";
 
-    const sendAnywayButton = document.createElement("button");
-    sendAnywayButton.textContent = "שלח בכל זאת";
+  const feedbackBubble = document.createElement("div");
+  feedbackBubble.textContent = analysisText;
+  feedbackBubble.style.backgroundColor = "#f5f8fa";
+  feedbackBubble.style.padding = "10px 14px";
+  feedbackBubble.style.borderRadius = "16px";
+  feedbackBubble.style.boxShadow = "0 1px 3px rgba(0,0,0,0.1)";
+  feedbackBubble.style.fontSize = "15px";
+  feedbackBubble.style.lineHeight = "1.5";
+  feedbackBubble.style.direction = "rtl";
 
-    [editButton, sendAnywayButton].forEach((btn) => {
-      btn.style.padding = "6px 12px";
-      btn.style.border = "none";
-      btn.style.borderRadius = "6px";
-      btn.style.cursor = "pointer";
-      btn.style.fontSize = "14px";
-      btn.style.marginLeft = "8px";
-    });
+  feedbackRow.appendChild(feedbackImg);
+  feedbackRow.appendChild(feedbackBubble);
 
-    editButton.style.backgroundColor = "#f0f0f0";
-    sendAnywayButton.style.backgroundColor = "#00a884";
-    sendAnywayButton.style.color = "white";
+  // === Action buttons ===
+  const actionRow = document.createElement("div");
+  actionRow.style.display = "flex";
+  actionRow.style.flexDirection = "row-reverse";
+  actionRow.style.gap = "8px";
 
-    popup.appendChild(feedbackText);
-    popup.appendChild(editButton);
-    popup.appendChild(sendAnywayButton);
+  const editButton = document.createElement("button");
+  editButton.textContent = "ערוך הודעה";
 
-    // Edit button: Put message back in input box
-    editButton.addEventListener("click", () => {
-      const inputBox = document.querySelector('div[aria-label="הקלדת הודעה"]');
-      if (inputBox) {
-        inputBox.innerText = originalMessage;
-      }
-      popup.remove();
-      console.log("✏️ המשתמש בחר לערוך את ההודעה.");
-    });
+  const sendAnywayButton = document.createElement("button");
+  sendAnywayButton.textContent = "שלח בכל זאת";
 
-    // Send anyway button
-    sendAnywayButton.addEventListener("click", () => {
-      sendOriginalMessage(originalMessage);
-      popup.remove();
-      console.log("📨 המשתמש בחר לשלוח את ההודעה בכל זאת.");
-    });
+  [editButton, sendAnywayButton].forEach((btn) => {
+    btn.style.padding = "8px 14px";
+    btn.style.border = "none";
+    btn.style.borderRadius = "8px";
+    btn.style.cursor = "pointer";
+    btn.style.fontSize = "14px";
   });
+
+  editButton.style.backgroundColor = "#fff";
+  editButton.style.border = "1px solid #ccc";
+  editButton.style.color = "#333";
+
+  sendAnywayButton.style.backgroundColor = "#00a884";
+  sendAnywayButton.style.color = "white";
+
+  actionRow.appendChild(editButton);
+  actionRow.appendChild(sendAnywayButton);
+
+  const closeBtn = document.createElement("button");
+  closeBtn.textContent = "×";
+  closeBtn.style.position = "absolute";
+  closeBtn.style.top = "8px";
+  closeBtn.style.left = "12px";
+  closeBtn.style.background = "none";
+  closeBtn.style.border = "none";
+  closeBtn.style.fontSize = "18px";
+  closeBtn.style.cursor = "pointer";
+  closeBtn.onclick = () => popup.remove();
+  popup.appendChild(closeBtn);
+
+
+  // Append everything to popup
+  popup.appendChild(feedbackRow);
+  popup.appendChild(actionRow);
+
+  // Button actions
+  editButton.addEventListener("click", () => {
+    const inputBox = document.querySelector('div[aria-label="הקלדת הודעה"]');
+    if (inputBox) {
+      inputBox.innerText = originalMessage;
+    }
+    popup.remove();
+    console.log("✏️ המשתמש בחר לערוך את ההודעה.");
+  });
+
+  sendAnywayButton.addEventListener("click", () => {
+    sendOriginalMessage(originalMessage);
+    popup.remove();
+    console.log("📨 המשתמש בחר לשלוח את ההודעה בכל זאת.");
+  });
+});
 }
 
 

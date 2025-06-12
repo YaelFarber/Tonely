@@ -1,18 +1,24 @@
 {
-    "manifest_version": 3,
-    "name" : "Tonely",
-    "description" : "Empathetic tone checker for Text messages",
-    "version" : "1.0",
-    "permissions": [
+  "manifest_version": 3,
+  "name": "Tonely",
+  "description": "Empathetic tone checker for Text messages",
+  "version": "1.0",
+  "permissions": [
     "storage"
-    ],
-    "content_scripts" : [
-        {
-            "matches": ["https://web.whatsapp.com/*"],
-            "js": ["content.js"]
-        }
-    ],
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://web.whatsapp.com/*"],
+      "js": ["content.js"]
+    }
+  ],
   "host_permissions": [
     "https://tonely.onrender.com/*"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["assets/Tonely.png"],
+      "matches": ["<all_urls>"]
+    }
   ]
 }
