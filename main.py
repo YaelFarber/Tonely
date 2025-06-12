@@ -1,9 +1,11 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from openai import OpenAI
+from fastapi.middleware.cors import CORSMiddleware
 import os
-from dotenv import load_dotenv
 import json
+from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -12,19 +14,46 @@ API_KEY = os.getenv("OPENAI_API_KEY")
 if not API_KEY:
     raise RuntimeError("⚠️ OPENAI_API_KEY not found. Please check your .env file.")
 
-# Set the OpenAI API key
-#openai.api_key = API_KEY
-
 # Initialize the FastAPI app
 app = FastAPI()
 
+# Configure CORS to allow requests from specific origins
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://web.whatsapp.com" ,
+        "http://localhost:3000"     
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+# Middleware to restrict access to specific origins
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://web.whatsapp.com", "http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # Serve static files from the 'example_data' folder (for testing with mock JSON response)
-from fastapi.staticfiles import StaticFiles
-app.mount("/example_data", StaticFiles(directory="example_data"), name="example_data")
+#from fastapi.staticfiles import StaticFiles
+#app.mount("/example_data", StaticFiles(directory="example_data"), name="example_data")
 
 # Define the expected structure of incoming POST requests
 class Message(BaseModel):
     text: str  # The message content to analyze
+
+# Define a preflight handler for CORS OPTIONS requests
+@app.options("/analyze")
+def preflight_handler():
+    response = JSONResponse(content={"message": "Preflight OK"})
+    response.headers["Access-Control-Allow-Origin"] = "https://web.whatsapp.com"
+    response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    return response
 
 # Define the /analyze endpoint to receive messages and analyze their emotional tone
 @app.post("/analyze")

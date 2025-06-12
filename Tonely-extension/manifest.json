@@ -1,12 +1,19 @@
 {
     "manifest_version": 3,
-    "name" : "erev tov extension",
-    "description" : "Display ערב טוב on top of each page.",
+    "name" : "Tonely",
+    "description" : "Empathetic tone checker for Text messages",
     "version" : "1.0",
+    "permissions": [
+    "storage",
+    "https://tonely.onrender.com/*"
+    ],
     "content_scripts" : [
         {
             "matches": ["https://web.whatsapp.com/*"],
             "js": ["content.js"]
         }
-    ]
+    ],
+  "host_permissions": [
+    "https://tonely.onrender.com/*"
+  ]
 }

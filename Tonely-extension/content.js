@@ -31,7 +31,7 @@ const interval = setInterval(() => {
         event.stopImmediatePropagation();
         event.preventDefault();
     
-        // Send to LLM for tone analysis
+        // Use real LLM-based tone analysis
         const feedback = await fetchToneFeedback(message);
     
         if (feedback.flagged) {
@@ -48,55 +48,45 @@ const interval = setInterval(() => {
 }, 500);
 
 
+// Real integration with FastAPI server on Render
+async function fetchToneFeedback(messageText) {
+  try {
+    const res = await fetch("https://tonely.onrender.com/analyze", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ text: messageText })
+    });
 
-// // This function sends the user's message to the LLM server and waits for the feedback
-// async function fetchToneFeedback(messageText) {
-//   try {
-//     // Send a POST request to the server with the message as JSON
-//     const res = await fetch("http://localhost:5000/analyze", {
-//       method: "POST",
-//       headers: {
-//         "Content-Type": "application/json"
-//       },
-//       body: JSON.stringify({ message: messageText })
-//     });
+    if (!res.ok) throw new Error("Server returned an error");
 
-//     // If the response is not OK (e.g. 500 error), throw an error
-//     if (!res.ok) throw new Error("Server returned an error");
+    const data = await res.json();
+    console.log(" API response:", data);
 
-//     // Parse the JSON response from the server
-//     const data = await res.json();
+    const sensitiveTones = [
+      "angry", "sarcastic", "passive-aggressive",
+      "cold", "defensive", "dismissive", "annoyed", "insecure"
+    ];
 
-//     // Log the server's feedback (for debugging)
-//     console.log("📡 פידבק שהוחזר מה-LLM:", data);
+    if (data.tone === "neutral" || data.feedback === null) {
+      return { flagged: false };
+    }
+ // Only flag if tone is in sensitive list
+    if (sensitiveTones.includes(data.tone.toLowerCase())) {
+      return {
+        flagged: true,
+        analysisText: data.feedback
+      };
+    }
 
-//     // Return the result (expected to include at least { flagged: true/false })
-//     return data;
+    return { flagged: false };
 
-//   } catch (err) {
-//     // Log the error (if fetch fails, or server is down)
-//     console.error("❌ שגיאה בחיבור ל-LLM:", err);
-
-//     // Return a safe default if something goes wrong
-//     return { flagged: false };
-//   }
-// }
-
-async function fetchToneFeedback(message) {
-  console.log("📤 נשלחה הודעה ל־LLM (מדומה)...");
-
-  // מחכה שנייה אחת כאילו זו שיחה עם שרת
-  await new Promise(resolve => setTimeout(resolve, 1000));
-
-  // בודקת אם ההודעה כוללת מילים בעייתיות לצורך הדגמה
-  const flagged = message.includes("כועס") || message.includes("מטומטם");
-
-  return {
-    flagged: flagged, // true או false
-    analysisText: flagged ? "ההודעה שלך עשויה להיתפס כפוגענית. כדאי לשקול לנסח אותה מחדש." : ""
-  };
+  } catch (err) {
+    console.error(" Error communicating with the LLM API:", err);
+    return { flagged: false }; // fallback: send message anyway
+  }
 }
-
 
 
 
@@ -239,12 +229,6 @@ function sendOriginalMessage(text) {
     }
   }, 100);
 }
-
-
-
-
-
-//showTonePopup();
 
 
 
