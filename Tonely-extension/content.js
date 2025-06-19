@@ -1,5 +1,18 @@
 console.log("התוסף נטען ✅");
 
+// Add global CSS style for highlighting problematic words (only once)
+const highlightStyle = document.createElement("style");
+highlightStyle.innerHTML = `
+  .highlighted-word {
+    background-color: rgba(255, 0, 0, 0.15);
+    border-radius: 4px;
+    padding: 0 4px;
+    cursor: help;
+  }
+`;
+document.head.appendChild(highlightStyle);
+
+
 let suppressNextClick = false; // ← Prevent Tonely from re-triggering itself
 
 
@@ -44,7 +57,7 @@ const interval = setInterval(() => {
     
         // Handle flagged tone
         if (feedback.flagged) {
-          showTonePopup(message, feedback.analysisText);
+          showTonePopup(message, feedback.analysisText, feedback.highlightedWords);
           console.log("⚠️ טונלי זיהה טון רגיש והציג פופאפ.");
         } else {
           sendOriginalMessage(message);
@@ -59,7 +72,13 @@ const interval = setInterval(() => {
   }
 }, 500);
 
-// Real integration with FastAPI server on Render
+/**
+ * Sends the user's message text to the tone analysis API and returns the result.
+ * If the tone is problematic, the function includes feedback and a list of problematic words.
+ * 
+ * @param {string} messageText - The text to analyze.
+ * @returns {Promise<{ flagged: boolean, analysisText?: string, highlightedWords?: string[] }>}
+ */
 async function fetchToneFeedback(messageText) {
   try {
     const res = await fetch("https://tonely.onrender.com/analyze", {
@@ -80,7 +99,8 @@ async function fetchToneFeedback(messageText) {
       console.log("⚠️ ההודעה עלולה להיקלט כפוגענית או רגישה");
       return {
         flagged: true,
-        analysisText: data.feedback
+        analysisText: data.feedback,
+        highlightedWords: data.problematic_words || []
       };
     }
 
@@ -93,6 +113,7 @@ async function fetchToneFeedback(messageText) {
     return { flagged: false }; // fallback: send message anyway
   }
 }
+
 
 /**
  * Speaks a given Hebrew text aloud using the Web Speech API.
@@ -145,7 +166,7 @@ function applyHoverEffects(button, originalColor = null, hoverColor = null) {
 
 
 // Function to show the tone feedback popup
-function showTonePopup(originalMessage, analysisText) {
+function showTonePopup(originalMessage, analysisText, highlightedWords = []) {
   const existingPopup = document.getElementById("tone-popup");
   if (existingPopup) existingPopup.remove();
 
@@ -186,7 +207,7 @@ function showTonePopup(originalMessage, analysisText) {
 
   const bubble = document.createElement("div");
   bubble.className = "tone-bubble";
-  bubble.textContent = "היי, רק רציתי לשאול... רוצה לשמוע איך זה אולי יישמע?";
+  bubble.textContent = "היי, רק רציתי לשאול... רוצה לשמוע מה יש לי להגיד?";
   Object.assign(bubble.style, {
     backgroundColor: "#eef5f8",
     padding: "10px 14px",
@@ -235,6 +256,8 @@ function showTonePopup(originalMessage, analysisText) {
   buttonRow.appendChild(sendButton);
 
   popup.appendChild(topRow);
+  // Add buttons and settings menu
+  const { highlightCheckbox, altTextCheckbox } = createSettingsMenu(popup);
   popup.appendChild(buttonRow);
   document.body.appendChild(popup);
   requestAnimationFrame(() => {
@@ -265,7 +288,41 @@ function showTonePopup(originalMessage, analysisText) {
       const feedbackImg = tonelyImg.cloneNode();
 
       const feedbackBubble = document.createElement("div");
-      feedbackBubble.textContent = analysisText;
+
+      const useHighlight = highlightCheckbox?.checked;
+      const problematicWords = highlightedWords || [];
+
+      feedbackBubble.textContent = analysisText
+
+      if (useHighlight && originalMessage && problematicWords.length > 0) {
+        const originalMessageHeader = document.createElement("div");
+        originalMessageHeader.textContent = "מילים רגישות בהודעתך:";
+        Object.assign(originalMessageHeader.style, {
+          fontWeight: "bold",
+          marginTop: "8px",
+          marginBottom: "4px",
+          fontSize: "14px",
+          color: "#333"
+        });
+      
+        const originalMessageBox = document.createElement("div");
+        originalMessageBox.innerHTML = highlightWordsInFeedback(originalMessage, problematicWords);
+        Object.assign(originalMessageBox.style, {
+          backgroundColor: "#fffaf0",
+          padding: "10px 14px",
+          borderRadius: "12px",
+          border: "1px solid #eee",
+          fontSize: "14px",
+          lineHeight: "1.5",
+          direction: "rtl",
+          whiteSpace: "pre-wrap"
+        });
+      
+        feedbackBubble.appendChild(originalMessageHeader);
+        feedbackBubble.appendChild(originalMessageBox);
+      }
+      
+
       Object.assign(feedbackBubble.style, {
         backgroundColor: "#f5f8fa",
         padding: "10px 14px",
@@ -371,7 +428,104 @@ function showTonePopup(originalMessage, analysisText) {
   });
 }
 
+//settings⚙️
+function createSettingsMenu(popup) {
+  // Create the settings toggle button
+  const settingsBtn = document.createElement("button");
+  settingsBtn.textContent = "⚙️";
+  Object.assign(settingsBtn.style, {
+    position: "absolute",
+    bottom: "12px",
+    right: "12px",
+    background: "none",
+    border: "none",
+    fontSize: "18px",
+    cursor: "pointer"
+  });
 
+  // Create the settings dropdown menu
+  const settingsMenu = document.createElement("div");
+  settingsMenu.style.display = "none";
+  Object.assign(settingsMenu.style, {
+    position: "absolute",
+    bottom: "48px", // above the button
+    right: "12px",
+    backgroundColor: "#f9f9f9",
+    border: "1px solid #ddd",
+    borderRadius: "8px",
+    padding: "8px",
+    boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
+    fontSize: "14px",
+    zIndex: "10000"
+  });
+
+  // Create checkbox for highlighting problematic words
+  const highlightOption = document.createElement("label");
+  const highlightCheckbox = document.createElement("input");
+  highlightCheckbox.type = "checkbox";
+  highlightCheckbox.style.marginLeft = "6px";
+  highlightOption.appendChild(highlightCheckbox);
+  highlightOption.appendChild(document.createTextNode("סמן מילים רגישות"));
+  highlightOption.style.display = "block";
+  highlightOption.style.marginBottom = "6px";
+
+  // Create checkbox for alternative rephrasing
+  const altTextOption = document.createElement("label");
+  const altTextCheckbox = document.createElement("input");
+  altTextCheckbox.type = "checkbox";
+  altTextCheckbox.style.marginLeft = "6px";
+  altTextOption.appendChild(altTextCheckbox);
+  altTextOption.appendChild(document.createTextNode("הצג ניסוח חלופי"));
+  altTextOption.style.display = "block";
+
+  // Add options to the menu
+  settingsMenu.appendChild(highlightOption);
+  settingsMenu.appendChild(altTextOption);
+
+  // Toggle menu visibility
+  settingsBtn.addEventListener("click", () => {
+    settingsMenu.style.display = settingsMenu.style.display === "none" ? "block" : "none";
+    console.log("⚙️ תפריט הגדרות נפתח/נסגר");
+  });
+
+  // Append both elements directly to the popup container
+  popup.appendChild(settingsBtn);
+  popup.appendChild(settingsMenu);
+
+  return {
+    highlightCheckbox,
+    altTextCheckbox
+  };
+}
+
+/**
+   * Highlights given words in a feedback string by wrapping them with <span>.
+   * @param {string} feedbackText - The full feedback text from the LLM.
+   * @param {string[]} words - Array of problematic words to highlight.
+   * @returns {string} - The HTML string with highlighted spans.
+   */
+function highlightWordsInFeedback(feedbackText, words) {
+  if (!words || words.length === 0) return feedbackText;
+
+  const escapedWords = words.map(w =>
+    w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  );
+
+  console.log("🔍 Highlighting words:", words);
+  console.log("🔍 Escaped pattern:", escapedWords.join("|"));
+
+  const regex = new RegExp(`(${escapedWords.join("|")})`, "gi");
+
+  return feedbackText.replace(regex, match => {
+    console.log("✨ Matching:", match);
+    return `<span class="highlighted-word">${match}</span>`;
+  });
+}
+
+
+
+
+// send the original message
 function sendOriginalMessage(text) {
   const inputBox = document.querySelector('div[aria-label="הקלדת הודעה"]');
   if (!inputBox) {

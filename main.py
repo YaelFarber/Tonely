@@ -65,7 +65,7 @@ def analyze_message(message: Message):
     - "tone": the detected emotional tone (e.g., angry, passive-aggressive, cold, dismissive, sarcastic, etc.).
     - "problematic": true if the tone might be perceived as emotionally difficult, harsh, or hurtful to the recipient (even subtly); false if the tone is safe and unlikely to cause discomfort or misunderstanding.
 
-    If problematic is **true**, also include:
+    If problematic is *true*, also include:
     - "feedback": a short, warm, and friendly reflection — in the same language as the original message — focusing on how the recipient might feel when reading it.
      Don't describe how the message is written. Instead, describe the emotional impact it may have on the person who receives it.
      Use natural, human-style language — informal is fine. Be kind and avoid overanalyzing or sounding robotic.
@@ -74,7 +74,7 @@ def analyze_message(message: Message):
     - "suggested_rewrite": offer a slightly softer or more emotionally aware alternative phrasing, preserving the original intent. Keep it in the same language.
     - "problematic_words": a list of emotionally charged or tone-affecting words or phrases that may have contributed to the problematic tone (if any)
 
-    If problematic is **false**, return only:
+    If problematic is *false*, return only:
     - "tone"
     - "problematic"
 
@@ -86,8 +86,10 @@ def analyze_message(message: Message):
     Message: "{message.text}"
 
     Detect the message language automatically.  
-    Respond **only** in compact JSON format — no markdown, no explanation, no extra text.
+    Respond *only* in compact JSON format — no markdown, no explanation, no extra text.
+    Under no circumstances should any field (especially "feedback") be in a different language than the original message.
     """
+
 
     # Log the incoming message for debugging
     print(f"[INFO] Incoming message: {message.text}")
