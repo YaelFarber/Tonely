@@ -61,29 +61,39 @@ def analyze_message(message: Message):
     # Construct the prompt for the language model
     prompt = f"""
     You are an empathetic assistant. Analyze the message below and reply in compact JSON format with:
-    - "problematic": true if the tone might be perceived as emotionally difficult, harsh, or hurtful to the recipient (even subtly); false if the tone is safe and not likely to cause discomfort or misunderstanding.
-    - "feedback": a short, warm, and friendly reflection — in the same language as the original message — focusing on how the recipient might feel when reading it. 
-    Don't describe how the message is written. Instead, describe the emotional impact it may have on the person who receives it.
-    Use natural, human-style language — informal is fine. Be kind and avoid overanalyzing or sounding robotic.
-    At the end of the feedback, always add a gentle, conversational question inviting the sender to reflect or respond — something short and open-ended like: "what do you think about it?" etc.
+
+    - "tone": the detected emotional tone (e.g., angry, passive-aggressive, cold, dismissive, sarcastic, etc.).
+    - "problematic": true if the tone might be perceived as emotionally difficult, harsh, or hurtful to the recipient (even subtly); false if the tone is safe and unlikely to cause discomfort or misunderstanding.
+
+    If problematic is **true**, also include:
+    - "feedback": a short, warm, and friendly reflection — in the same language as the original message — focusing on how the recipient might feel when reading it.
+     Don't describe how the message is written. Instead, describe the emotional impact it may have on the person who receives it.
+     Use natural, human-style language — informal is fine. Be kind and avoid overanalyzing or sounding robotic.
+    At the end of the feedback, always add a gentle, conversational question inviting the sender to reflect or respond — like: "what do you think about it?" or "do you want to rephrase?"
+
+    - "suggested_rewrite": offer a slightly softer or more emotionally aware alternative phrasing, preserving the original intent. Keep it in the same language.
+    - "problematic_words": a list of emotionally charged or tone-affecting words or phrases that may have contributed to the problematic tone (if any)
+
+    If problematic is **false**, return only:
+    - "tone"
+    - "problematic"
 
     HOWEVER:  
-    If the message is short, emotionally neutral, and polite (e.g., "thanks", "ok", "noted", "sure", "got it", "fine", "understood", etc.), or contains no emotional or interpersonal subtext — return this exact JSON:
+    If the message is short, emotionally neutral, and polite (e.g., "thanks", "ok", "noted", "sure", "got it", "fine", "understood", "אין בעיה", "סבבה"), or contains no emotional or interpersonal subtext — return this exact minimal JSON:
 
-    ```json
-    {{ "tone": "neutral", "problematic": false, "feedback": null }}
+    {{ "tone": "neutral", "problematic": false }}
+
     Message: "{message.text}"
-    Detect the language automatically. Respond in compact JSON format only, no explanation.
 
+    Detect the message language automatically.  
+    Respond **only** in compact JSON format — no markdown, no explanation, no extra text.
     """
-       # Ensure the message text is not empty
 
     # Log the incoming message for debugging
     print(f"[INFO] Incoming message: {message.text}")
 
     try:
         # Send the prompt to OpenAI's Chat API 
-
         client = OpenAI()
         client.api_key = API_KEY
         completion = client.chat.completions.create(
@@ -95,7 +105,7 @@ def analyze_message(message: Message):
             response_format={"type": "json_object"}
         )
 
-        ###
+        
         # Extract the LLM's response
         reply = completion.choices[0].message.content
 
