@@ -57,7 +57,7 @@ const interval = setInterval(() => {
     
         // Handle flagged tone
         if (feedback.flagged) {
-          showTonePopup(message, feedback.analysisText, feedback.highlightedWords);
+          showTonePopup(message, feedback.analysisText, feedback.highlightedWords, feedback.suggestedRewrite);
           console.log("⚠️ טונלי זיהה טון רגיש והציג פופאפ.");
         } else {
           sendOriginalMessage(message);
@@ -100,7 +100,8 @@ async function fetchToneFeedback(messageText) {
       return {
         flagged: true,
         analysisText: data.feedback,
-        highlightedWords: data.problematic_words || []
+        highlightedWords: data.problematic_words || [],
+        suggestedRewrite: data.suggested_rewrite || null
       };
     }
 
@@ -166,7 +167,7 @@ function applyHoverEffects(button, originalColor = null, hoverColor = null) {
 
 
 // Function to show the tone feedback popup
-function showTonePopup(originalMessage, analysisText, highlightedWords = []) {
+function showTonePopup(originalMessage, analysisText, highlightedWords = [], suggestedRewrite = null) {
   const existingPopup = document.getElementById("tone-popup");
   if (existingPopup) existingPopup.remove();
 
@@ -189,6 +190,12 @@ function showTonePopup(originalMessage, analysisText, highlightedWords = []) {
   popup.style.opacity = "0";
   popup.style.transform = "translateY(10px)";
   popup.style.transition = "opacity 0.3s ease, transform 0.3s ease";
+  // Limit popup height to avoid overflowing small screens
+  popup.style.maxHeight = "80vh";           // Prevents the popup from exceeding 80% of the screen height
+  popup.style.overflowY = "auto";           // Enables vertical scroll when content is too long
+  popup.style.scrollbarWidth = "thin";      // Optional: makes scrollbar slimmer in Firefox
+  popup.style.overscrollBehavior = "contain"; // Prevents scroll chaining to background
+
 
   // === Initial content ===
   const topRow = document.createElement("div");
@@ -207,7 +214,7 @@ function showTonePopup(originalMessage, analysisText, highlightedWords = []) {
 
   const bubble = document.createElement("div");
   bubble.className = "tone-bubble";
-  bubble.textContent = "היי, רק רציתי לשאול... רוצה לשמוע מה יש לי להגיד?";
+  bubble.textContent = "היי, יש לי משהו קטן להגיד... רוצה לשמוע?";
   Object.assign(bubble.style, {
     backgroundColor: "#eef5f8",
     padding: "10px 14px",
@@ -317,10 +324,13 @@ function showTonePopup(originalMessage, analysisText, highlightedWords = []) {
           direction: "rtl",
           whiteSpace: "pre-wrap"
         });
+
       
         feedbackBubble.appendChild(originalMessageHeader);
         feedbackBubble.appendChild(originalMessageBox);
       }
+
+      appendSuggestedRewrite(feedbackBubble, suggestedRewrite, altTextCheckbox);
       
 
       Object.assign(feedbackBubble.style, {
@@ -522,6 +532,75 @@ function highlightWordsInFeedback(feedbackText, words) {
   });
 }
 
+
+/**
+ * Appends the suggested rewrite to the feedback bubble if the option is enabled.
+ * Displays the suggestion in a styled box with a copy button underneath.
+ * The user can click the button to copy the text manually.
+ *
+ * @param {HTMLElement} container - The DOM element to which the rewrite block should be added.
+ * @param {string} suggestedRewrite - The alternative message to suggest.
+ * @param {HTMLInputElement} checkbox - The checkbox that enables this feature.
+ */
+function appendSuggestedRewrite(container, suggestedRewrite, checkbox) {
+  if (!checkbox?.checked || !suggestedRewrite) return;
+
+  // Label for the section
+  const rewriteLabel = document.createElement("div");
+  rewriteLabel.textContent = "ניסוח מוצע:";
+  Object.assign(rewriteLabel.style, {
+    fontWeight: "bold",
+    marginTop: "12px",
+    marginBottom: "4px",
+    fontSize: "14px",
+    color: "#333"
+  });
+
+  // The text box displaying the suggested message
+  const rewriteBox = document.createElement("div");
+  rewriteBox.textContent = suggestedRewrite;
+  Object.assign(rewriteBox.style, {
+    backgroundColor: "#f0f8ff",
+    padding: "10px 14px",
+    borderRadius: "12px",
+    border: "1px solid #cce",
+    fontSize: "14px",
+    lineHeight: "1.5",
+    direction: "rtl",
+    userSelect: "text",
+    whiteSpace: "pre-wrap"
+  });
+
+  // Copy button below the box
+  const copyBtn = document.createElement("button");
+  copyBtn.textContent = "📋 העתק";
+  Object.assign(copyBtn.style, {
+    marginTop: "6px",
+    fontSize: "13px",
+    padding: "6px 10px",
+    cursor: "pointer",
+    border: "1px solid #aaa",
+    backgroundColor: "#fff",
+    borderRadius: "8px",
+    transition: "background-color 0.2s ease"
+  });
+
+  copyBtn.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(suggestedRewrite);
+      copyBtn.textContent = "✅ הועתק!";
+      setTimeout(() => (copyBtn.textContent = "📋 העתק"), 1500);
+    } catch (err) {
+      console.error("❌ שגיאה בהעתקה:", err);
+      copyBtn.textContent = "⚠️ נסה שוב";
+    }
+  });
+
+  // Wrap and insert all
+  container.appendChild(rewriteLabel);
+  container.appendChild(rewriteBox);
+  container.appendChild(copyBtn);
+}
 
 
 
