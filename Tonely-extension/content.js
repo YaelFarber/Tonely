@@ -38,6 +38,12 @@ const interval = setInterval(() => {
       const inputBox = document.querySelector('div[aria-label="הקלדת הודעה"]');
       if (inputBox) {
         const message = inputBox?.innerText?.trim();
+        
+        const incomingMessages = document.querySelectorAll(".message-in");
+        const lastIncoming = incomingMessages[incomingMessages.length - 1];
+        const contextText = lastIncoming?.innerText?.trim() || "";
+        console.log("📥 ההודעה האחרונה מהצד השני:", contextText);
+
     
         // 🛡️ Skip analysis if there's no actual text (e.g., image or emoji only)
         if (!message || message === "") {
@@ -53,7 +59,7 @@ const interval = setInterval(() => {
         event.preventDefault();
     
         // 🔍 Call LLM or backend to get tone feedback
-        const feedback = await fetchToneFeedback(message);
+        const feedback = await fetchToneFeedback(message, contextText);
     
         // Handle flagged tone
         if (feedback.flagged) {
@@ -77,16 +83,17 @@ const interval = setInterval(() => {
  * If the tone is problematic, the function includes feedback and a list of problematic words.
  * 
  * @param {string} messageText - The text to analyze.
+ * @param {string} contextText - The last incoming message text for context. 
  * @returns {Promise<{ flagged: boolean, analysisText?: string, highlightedWords?: string[] }>}
  */
-async function fetchToneFeedback(messageText) {
+async function fetchToneFeedback(messageText, contextText) {
   try {
     const res = await fetch("https://tonely.onrender.com/analyze", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ text: messageText })
+      body: JSON.stringify({ text: messageText, context: contextText })
     });
 
     if (!res.ok) throw new Error("Server returned an error");

@@ -36,6 +36,7 @@ client = OpenAI(api_key=API_KEY)
 # Define expected structure for incoming requests
 class Message(BaseModel):
     text: str  # Message content to analyze
+    context: str = ""  # Optional context for the message, can be empty
 
 # Handle CORS preflight requests (OPTIONS)
 @app.options("/analyze")
@@ -63,6 +64,10 @@ def analyze_message(message: Message):
     At the end of the feedback, always add a gentle, conversational question inviting the sender to reflect or respond — like: "what do you think about it?" or "do you want to rephrase?"
 
     - "suggested_rewrite": offer a slightly softer or more emotionally aware alternative phrasing, preserving the original intent. Keep it in the same language.
+     When creating the "suggested_rewrite", carefully re-check the wording to ensure it does not include any emotionally charged, sarcastic, blaming, or judgmental words or phrases. If you are not sure, prefer fully neutral language and remove any expression that could be perceived as critical or dismissive.
+     Before returning the "suggested_rewrite", review it as if you were analyzing it yourself for tone. Only include it if it would be rated as non-problematic, safe, and neutral.
+     If you cannot produce a suggested_rewrite that is fully neutral, gentle, and free of any emotionally charged or judgmental words, instead provide a short suggested_rewrite in the same language politely recommending not to reply right now and to wait for things to calm down or develop (e.g., "האמת שכדאי לא לענות עכשיו ולחכות להתפתחות.").
+
     - "problematic_words": a list of emotionally charged or tone-affecting words or phrases that may have contributed to the problematic tone (if any)
 
     If problematic is *false*, return only:
@@ -73,6 +78,17 @@ def analyze_message(message: Message):
     If the message is short, emotionally neutral, and polite (e.g., "thanks", "ok", "noted", "sure", "got it", "fine", "understood", "אין בעיה", "סבבה"), or contains no emotional or interpersonal subtext — return this exact minimal JSON:
 
     {{ "tone": "neutral", "problematic": false }}
+
+    Important:
+    The "context" below is the exact prior message the recipient sent, if any. Use it to fully understand the situation and intent behind the current message. If the context is empty or blank, analyze the message alone.
+
+    Usually, these situations occur in conversations between close partners or family members. If the text clearly indicates otherwise, adapt accordingly.
+
+    When generating feedback and suggested_rewrite, prefer warm, conversational, and human-like phrasing in Hebrew. Use simple, short sentences, as if you are a friendly coach or close friend, not a formal report.
+ 
+    Always try to infer the sender's gender from the message text and context. If you cannot reliably infer the gender, use gender-neutral phrasing in Hebrew as much as possible.
+    
+    Context: "{message.context}"
 
     Message: "{message.text}"
 
